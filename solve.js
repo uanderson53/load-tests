@@ -8,16 +8,17 @@ async function clickAll(page){ let did='';
   try{ const r=await page.evaluate(()=>{ let hit=null; function w(root,d){ for(const el of root.querySelectorAll('*')){ if(el.shadowRoot&&d<4){ const h2=w(el.shadowRoot,d+1); if(h2) return h2; } if(el.tagName==='INPUT'||String(el.className).match&&/cb-lb|checkbox|mark|turnstile/.test(String(el.className))){ const b=el.getBoundingClientRect(); if(b.width>4&&b.height>4) return {x:b.x+b.width/2,y:b.y+b.height/2}; } } return null; } return w(document,0); }); if(r){ await page.mouse.click(r.x,r.y); did+='pierce '; } }catch(e){}
   return did; }
 (async()=>{
-  L('solve v5 dual-clicker');
+  L('solve v6 env-target');
   const puppeteer=require('puppeteer-core');
+  const SITE=process.env.TARGET_HOST||'velor.win';
   const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/opt/google/chrome/chrome'].find(p=>fs.existsSync(p));
   const control=(await doh('challenges.cloudflare.com','A'))||'104.18.94.41';
-  spawn(exe,['--user-data-dir=./chrome-solve-prof','--remote-debugging-port=9333','--no-first-run','--no-default-browser-check','--window-size=1280,900','--host-resolver-rules=MAP brunhild.challenges.cloudflare.com '+control,'https://velor.win/'],{detached:true,stdio:'ignore'}).unref();
+  spawn(exe,['--user-data-dir=./chrome-solve-prof','--remote-debugging-port=9333','--no-first-run','--no-default-browser-check','--window-size=1280,900','--host-resolver-rules=MAP brunhild.challenges.cloudflare.com '+control,('https://'+SITE+'/')],{detached:true,stdio:'ignore'}).unref();
   await sleep(6000);
   let b=null;
   for(let k=0;k<20&&!b;k++){ try{ b=await puppeteer.connect({browserURL:'http://127.0.0.1:9333'}); }catch(e){ await sleep(1000); } }
   if(!b){ L('attach failed'); process.exit(1); }
-  const p=(await b.pages()).find(x=>x.url().includes('velor.win'))||(await b.pages())[0];
+  const p=(await b.pages()).find(x=>x.url().includes(SITE))||(await b.pages())[0];
   let title='';
   for(let i=0;i<200;i++){
     await sleep(1000);
