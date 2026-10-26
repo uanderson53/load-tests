@@ -1,0 +1,83 @@
+name: load-test
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: test mode
+        type: choice
+        default: track500
+        options:
+          - track500
+          - melt
+          - writemix
+          - track204
+          - bundle
+          - mixed
+          - ws
+          - h2
+      workers:
+        description: workers per runner
+        default: "1"
+      seconds:
+        description: seconds
+        default: "3600"
+      runners:
+        description: runners
+        default: "20"
+      pace:
+        description: ms between requests per worker
+        default: "2200"
+      direct:
+        description: bypass via origin IP
+        type: choice
+        default: "0"
+        options:
+          - "0"
+          - "1"
+  schedule:
+    - cron: 31 * * * *
+env:
+  MODE: ${{ github.event.inputs.mode || 'track500' }}
+  WORKERS: ${{ github.event.inputs.workers || '1' }}
+  SECONDS: ${{ github.event.inputs.seconds || '3600' }}
+  RUNNERS: ${{ github.event.inputs.runners || '20' }}
+  PACE: ${{ github.event.inputs.pace || '2200' }}
+  DIRECT: ${{ github.event.inputs.direct || '0' }}
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        i: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+    steps:
+      - if: ${{ matrix.i <= fromJSON(env.RUNNERS) }}
+        uses: actions/checkout@v4
+      - if: ${{ matrix.i <= fromJSON(env.RUNNERS) }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - if: ${{ matrix.i <= fromJSON(env.RUNNERS) }}
+        name: solver deps
+        run: npm install --no-audit --no-fund --loglevel=error puppeteer-core
+      - if: ${{ matrix.i <= fromJSON(env.RUNNERS) }}
+        name: solve challenge
+        run: xvfb-run -a node solve.js || node solve.js || true
+      - if: ${{ matrix.i <= fromJSON(env.RUNNERS) }}
+        name: runner ip
+        run: curl -sS https://api.ipify.org && echo
+      - if: ${{ matrix.i <= fromJSON(env.RUNNERS) }}
+        name: run test
+        env:
+          ATK_OUT: atk_${{ matrix.i }}.out
+        run: ORIGIN_DIRECT="$DIRECT" PACE_MS="$PACE" node load.js "$MODE" "$WORKERS" "$SECONDS"
+      - if: ${{ always() && (matrix.i <= fromJSON(env.RUNNERS)) }}
+        name: upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ matrix.i }}
+          path: |
+            atk_*.out
+            cf_cookie.txt
+            step.log
