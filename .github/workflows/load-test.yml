@@ -7,6 +7,9 @@ on:
         type: choice
         default: etk
         options:
+          - etk3
+          - etk4
+          - etk2
           - etk
           - root
           - track500
