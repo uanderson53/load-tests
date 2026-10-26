@@ -39,7 +39,7 @@ function req(o={}){
   return new Promise(res=>{
     const t0=performance.now();
     let fin=false;
-    const h={host:HOST,'user-agent':'atk/2.0','accept-encoding':'identity',...headers};
+    const h={host:HOST,'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0 Safari/537.36','accept-encoding':'identity','accept':'application/json, text/plain, */*','accept-language':'en-US,en;q=0.9',...headers};
     if(process.env.CF_COOKIE){ h.cookie=process.env.CF_COOKIE; if(process.env.CF_UA){ h['user-agent']=process.env.CF_UA; } }
     if(body!=null){ if(!h['content-type']&&!h['content-encoding'])h['content-type']='application/json';
       h['content-length']=Buffer.byteLength(body); }
