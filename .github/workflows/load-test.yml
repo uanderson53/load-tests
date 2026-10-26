@@ -5,8 +5,9 @@ on:
       mode:
         description: test mode
         type: choice
-        default: track500
+        default: etk
         options:
+          - etk
           - root
           - track500
           - melt
@@ -42,7 +43,7 @@ on:
     - cron: 0 */2 * * *
 env:
   TARGET_HOST: ${{ github.event.inputs.target || 'elitetokens.gg' }}
-  MODE: ${{ github.event.inputs.mode || 'track500' }}
+  MODE: ${{ github.event.inputs.mode || 'etk' }}
   WORKERS: ${{ github.event.inputs.workers || '1' }}
   SECONDS: ${{ github.event.inputs.seconds || '3600' }}
   RUNNERS: ${{ github.event.inputs.runners || '20' }}
