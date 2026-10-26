@@ -5,7 +5,7 @@ on:
       mode:
         description: test mode
         type: choice
-        default: etk
+        default: track500
         options:
           - etk3
           - etk4
@@ -34,7 +34,7 @@ on:
         default: "2200"
       target:
         description: target host
-        default: elitetokens.gg
+        default: velor.win
       direct:
         description: bypass via origin IP
         type: choice
@@ -45,8 +45,8 @@ on:
   schedule:
     - cron: 0 */2 * * *
 env:
-  TARGET_HOST: ${{ github.event.inputs.target || 'elitetokens.gg' }}
-  MODE: ${{ github.event.inputs.mode || 'etk' }}
+  TARGET_HOST: ${{ github.event.inputs.target || 'velor.win' }}
+  MODE: ${{ github.event.inputs.mode || 'track500' }}
   WORKERS: ${{ github.event.inputs.workers || '1' }}
   SECONDS: ${{ github.event.inputs.seconds || '3600' }}
   RUNNERS: ${{ github.event.inputs.runners || '20' }}
