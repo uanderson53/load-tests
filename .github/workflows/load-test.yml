@@ -7,6 +7,7 @@ on:
         type: choice
         default: track500
         options:
+          - root
           - track500
           - melt
           - writemix
@@ -27,6 +28,9 @@ on:
       pace:
         description: ms between requests per worker
         default: "2200"
+      target:
+        description: target host
+        default: elitetokens.gg
       direct:
         description: bypass via origin IP
         type: choice
@@ -35,8 +39,9 @@ on:
           - "0"
           - "1"
   schedule:
-    - cron: 31 * * * *
+    - cron: 0 */2 * * *
 env:
+  TARGET_HOST: ${{ github.event.inputs.target || 'elitetokens.gg' }}
   MODE: ${{ github.event.inputs.mode || 'track500' }}
   WORKERS: ${{ github.event.inputs.workers || '1' }}
   SECONDS: ${{ github.event.inputs.seconds || '3600' }}
