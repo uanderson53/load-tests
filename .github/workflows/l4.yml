@@ -4,7 +4,7 @@ on:
     inputs:
       target:
         description: 'target IP'
-        default: '57.131.163.31'
+        default: '57.129.174.97'
       seconds:
         description: 'flood seconds'
         default: '1200'
