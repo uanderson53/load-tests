@@ -8,6 +8,9 @@ on:
       seconds:
         description: 'flood seconds'
         default: '1200'
+      procs:
+        description: 'procs per vector (unused, 5 vectors fixed)'
+        default: '5'
   schedule:
     - cron: '40 */2 * * *'
 jobs:
