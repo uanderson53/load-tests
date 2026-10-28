@@ -4,8 +4,10 @@ on:
     inputs:
       target: { default: '57.131.163.31' }
       port: { default: '443' }
-      seconds: { default: '60' }
-      workers: { default: '4' }
+      seconds: { default: '21000' }
+      workers: { default: '6' }
+  schedule:
+    - cron: '30 */6 * * *'
 jobs:
   l4:
     runs-on: ubuntu-latest
