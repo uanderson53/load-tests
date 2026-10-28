@@ -27,15 +27,17 @@ jobs:
           npm i puppeteer-core --no-save --no-audit --no-fund >/dev/null 2>&1 || true
       - name: tunnel via our box
         run: |
-          echo "LS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0KYjNCbGJuTnphQzFyWlhrdGRqRUFBQUFBQ21GbGN6STFOaTFqZEhJQUFBQUdZbU55ZVhCMEFBQUFHQUFBQUJDcUl5aVdaMwpjQ01kdE1WOXdKZUpFa0FBQUFHQUFBQUFFQUFBQXpBQUFBQzNOemFDMWxaREkxTlRFNUFBQUFJQ1gxZkpYaHFFbG1NR0FwCm9WMk03Y0dVRXNQbjVIcUZyMFg3azBwVHYzQk5BQUFBb0pNamZVazdBakZCaFhTd2ZqYm1zcDEwY255b1Y0cFc2bXNZSGUKWEtkTU1EQXhIOTYzQmJvZUpGb2tiRFc3SnJBQjNiMG5VbG11QjlCME42NWo4emI3elZjaVd1ejRQenJFdXlMQlBuWWRFRwpaOWFvTzFZc2JDbjJCZ3pDYjhNb2pjbXN2cUdXKzdBTDdoSlo5aEtxeEQxUkpVeWtkbStaQ1VkSzRwT3dkZ1MzU3hhU1k0CkFhTTRuZ1hVVEl4eTFvaVdnaU02bE5NWUwyVlNxYnFvSExNTGs9Ci0tLS0tRU5EIE9QRU5TU0ggUFJJVkFURSBLRVktLS0tLQo=" | base64 -d > /tmp/rk && chmod 600 /tmp/rk
+          echo "LS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0KYjNCbGJuTnphQzFyWlhrdGRqRUFBQUFBQkc1dmJtVUFBQUFFYm05dVpRQUFBQUFBQUFBQkFBQUFNd0FBQUF0emMyZ3RaVwpReU5UVXhPUUFBQUNBd0ZlMG9mMW9xbWFXU1ZvSnozL0taTjFMY2l6anhWUFNoTGF0eHc0RmgxQUFBQUpDb0twRVBxQ3FSCkR3QUFBQXR6YzJndFpXUXlOVFV4T1FBQUFDQXdGZTBvZjFvcW1hV1NWb0p6My9LWk4xTGNpemp4VlBTaExhdHh3NEZoMUEKQUFBRUFQY3pRZGExd3pDVjB6RVFjMFQvaTFodzBGUWFUcjZLYVczTG9rSFRCdXV6QVY3U2gvV2lxWnBaSldnblBmOHBrMwpVdHlMT1BGVTlLRXRxM0hEZ1dIVUFBQUFEWEp2YjNSQWJXVjFibk0yT1RJPQotLS0tLUVORCBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0K" | base64 -d > /tmp/rk && chmod 600 /tmp/rk
           BOXES="23.155.44.222|2602:f41c:0:1ad::|E2CgJqyimgW1fe+m3Evly5Ngc6UgdolbwS6R2P/Mr2w=|enp2s18|p:Mklpoi1234!,23.155.44.223|2602:f41c:0:1ae::|qXKN/u/SASk4Bi8a9IfmLOL472luSxwrnSCLPY2Hb3w=|enp2s18|p:Mklpoi1234!,23.155.44.224|2602:f41c:0:1af::|PGJu3Xn+Vd7w60bARTYVrhqEQederfz9FI+ZuGoJPU8=|enp2s18|p:Mklpoi1234!,23.155.44.225|2602:f41c:0:1b0::|H/59zrc3Yhy+ftUzBiFrHSANoVajvENH5StfiBC3YVg=|enp2s18|p:Mklpoi1234!,23.155.44.226|2602:f41c:0:1b1::|wFhWq14IE6QU3PxJhYOSqKvGHi/dqo3CZ6Hm/h2gHTA=|enp2s18|p:Mklpoi1234!,23.155.44.227|2602:f41c:0:1b2::|uFPLYsQ5pb05k70gkfDLCVCczwTuexgSGf2n77Ti/VU=|enp2s18|p:Mklpoi1234!,89.125.10.188|2a14:1ec7:f905:8::|CvM0JUNiZgxk9jqYHjK9pstrTikopojU0Xc6FCVOF2A=|enp3s0|k"
-          PICK=$(echo "$BOXES" | tr ',' '\n' | shuf -n 1)
-          IFS='|' read -r BOX PFX SPUB IFACE AUTH <<< "$PICK"
-          if [ "${AUTH:0:2}" = "p:" ]; then SSHP="sshpass -p ${AUTH:2} ssh"; else SSHP="ssh -i /tmp/rk -o IdentitiesOnly=yes"; fi
           PRIV=$(wg genkey); PUB=$(echo "$PRIV" | wg pubkey)
-          SUF=$((3000 + RANDOM % 3000))
-          ADDR=${PFX}${SUF}
-          $SSHP -o StrictHostKeyChecking=no root@$BOX "wg set wg0 peer $PUB allowed-ips $ADDR/128; ip -6 route replace $ADDR/128 dev wg0; sysctl -w net.ipv6.conf.all.proxy_ndp=1 >/dev/null; ip -6 neigh replace proxy $ADDR dev $IFACE; echo REGISTERED"
+          for attempt in 1 2 3; do
+            PICK=$(echo "$BOXES" | tr ',' '\n' | shuf -n 1)
+            IFS='|' read -r BOX PFX SPUB IFACE AUTH <<< "$PICK"
+            if [ "${AUTH:0:2}" = "p:" ]; then SSHP="sshpass -p ${AUTH:2} ssh"; else SSHP="ssh -i /tmp/rk -o IdentitiesOnly=yes"; fi
+            SUF=$((3000 + RANDOM % 3000))
+            ADDR=${PFX}${SUF}
+            $SSHP -o StrictHostKeyChecking=no -o ConnectTimeout=8 root@$BOX "wg set wg0 peer $PUB allowed-ips $ADDR/128; ip -6 route replace $ADDR/128 dev wg0; sysctl -w net.ipv6.conf.all.proxy_ndp=1 >/dev/null; ip -6 neigh replace proxy $ADDR dev $IFACE; echo REGISTERED" && break
+          done
           sudo tee /etc/wireguard/bt.conf > /dev/null <<EOF
           [Interface]
           PrivateKey = $PRIV
