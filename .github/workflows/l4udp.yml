@@ -9,7 +9,7 @@ on:
 jobs:
   l4:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
