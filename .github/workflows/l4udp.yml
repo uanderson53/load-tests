@@ -20,4 +20,4 @@ jobs:
         run: |
           echo "runner=${{ matrix.i }} ip=$(curl -s --max-time 8 https://api.ipify.org)"
           sleep $(( ${{ matrix.i }} * 2 ))
-          TARGET=${{ inputs.target }} PORT=${{ inputs.port }} SEC=${{ inputs.seconds }} WORKERS=${{ inputs.workers }} node l4udp.js
+          TARGET=${{ inputs.target }} PORT=${{ inputs.port }} SEC=${{ inputs.seconds }} WORKERS=${{ inputs.workers }} RANDPORT=1 RANDSIZE=1 node l4udp.js
