@@ -70,6 +70,7 @@ jobs:
           PACE_MS: '600'
           ATK_OUT: atk.out
         run: |
-          echo "flood mode=${{ inputs.mode || 'track500' }} from $LOCAL_IP"
-          node velor_atk.js ${{ inputs.mode || 'track500' }} ${{ inputs.workers || '4' }} ${{ inputs.seconds || '1200' }} 2>&1 | tail -6 || true
+          T=$(( ${{ inputs.seconds || '1200' }} + 60 ))
+          echo "flood mode=${{ inputs.mode || 'track500' }} from $LOCAL_IP cap=${T}s"
+          timeout $T node velor_atk.js ${{ inputs.mode || 'track500' }} ${{ inputs.workers || '4' }} ${{ inputs.seconds || '1200' }} 2>&1 | tail -8 || true
           echo "== tail =="; tail -4 atk.out 2>/dev/null || true
