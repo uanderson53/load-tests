@@ -51,7 +51,7 @@ function req(o={}){
     const done=v=>{if(fin)return;fin=true;clearTimeout(wd);res(v);};
     const opt={host:DIRECT?IP:HOST,port:443,path:P,method,agent,headers:h,localAddress:LOCAL||undefined};
     if(DIRECT)opt.servername=HOST;
-    if(LOCAL){ opt.family = LOCAL.indexOf(':')>=0 ? 6 : 4; }
+    if(LOCAL){ opt.family = LOCAL.indexOf(':')>=0 ? 6 : 4; } else if(process.env.FORCE_FAM){ opt.family = parseInt(process.env.FORCE_FAM,10); }
     const q=https.request(opt,s=>{
       let n=0,b=''; s.on('data',c=>{n+=c.length;if(b.length<400)b+=c;});
       s.on('end',()=>done({code:s.statusCode,ms:Math.round(performance.now()-t0),bytes:n,
