@@ -205,7 +205,7 @@ async function h2run(){
   const pid0=await baseline();
   if(MODE==='probe'){L('done');return;}
   if(MODE==='hold'){await hold();L('done');return;}
-  if(MODE==='h2'||MODE==='h2trk'){await h2run();const p1=await baseline();L(pid0===p1?'pid stable':(p1==='?'?'pid unreadable at post-check (health no-answer)':'PID CHANGED '+pid0+'->'+p1));L('done');return;}
+  if(MODE==='h2'||MODE==='h2trk'||MODE==='h2lb'){await h2run();const p1=await baseline();L(pid0===p1?'pid stable':(p1==='?'?'pid unreadable at post-check (health no-answer)':'PID CHANGED '+pid0+'->'+p1));L('done');return;}
   const endAt=Date.now()+DUR*1000; let sent=0,closes=0; const codes={}; let first429=null;
   const mon=setInterval(async()=>{const p=await req({path:'/api/health',timeout:8000});
     L(`  t+${DUR-Math.round((endAt-Date.now())/1000)}s health=${p.code}/${p.ms}ms`);},5000);
